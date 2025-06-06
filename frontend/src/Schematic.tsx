@@ -10,11 +10,11 @@ interface ElkGraph extends ElkNode {
   children: ElkNode[];
   edges: ElkExtendedEdge[]; // must be extended edge with sources/targets
 }
+
 function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
   const nodes: ElkNode[] = [];
   const edges: ElkExtendedEdge[] = [];
 
-  // Add all non-ground components as nodes
   netlist.components.forEach((comp) => {
     if (comp.type !== "ground") {
       nodes.push({
@@ -25,49 +25,74 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
       });
     }
   });
+
   netlist.nets.forEach((net) => {
     const connectedPins = net.nodes;
-  
+
     for (let i = 0; i < connectedPins.length; i++) {
       for (let j = i + 1; j < connectedPins.length; j++) {
         const sourcePin = connectedPins[i];
         const targetPin = connectedPins[j];
         const sourceNodeId = sourcePin.split(".")[0];
         const targetNodeId = targetPin.split(".")[0];
-  
+
         const sourceComp = netlist.components.find(c => c.id === sourceNodeId);
         const targetComp = netlist.components.find(c => c.id === targetNodeId);
-  
-        // For source node, if ground, create unique ground node
+
         let sourceNode = sourceNodeId;
+        let targetNode = targetNodeId;
+
+        let sourcePort, targetPort;
+
         if (sourceComp?.type === "ground") {
           sourceNode = `GND@${net.id}-${i}-${Math.random().toString(36).slice(2, 7)}`;
+          sourcePort = `${sourceNode}_top`;
           nodes.push({
             id: sourceNode,
-            labels: [{ text: "GND" }],
             width: 30,
             height: 30,
+            ports: [
+              {
+                id: sourcePort,
+                properties: {
+                  "port.side": "NORTH",
+                  "port.alignment": "CENTER",
+                },
+              },
+            ],
           });
         }
-  
-        // For target node, if ground, create unique ground node
-        let targetNode = targetNodeId;
+
         if (targetComp?.type === "ground") {
           targetNode = `GND@${net.id}-${j}-${Math.random().toString(36).slice(2, 7)}`;
+          targetPort = `${targetNode}_top`;
           nodes.push({
             id: targetNode,
-            labels: [{ text: "GND" }],
             width: 30,
             height: 30,
+            ports: [
+              {
+                id: targetPort,
+                properties: {
+                  "port.side": "NORTH",
+                  "port.alignment": "CENTER",
+                },
+              },
+            ],
           });
         }
-  
+
+        const edge: ElkExtendedEdge = {
+          id: `${net.id}-${sourceNode}-${targetNode}`,
+          sources: [sourceNode],
+          targets: [targetNode],
+        };
+
+        if (sourcePort) edge.sourcePort = sourcePort;
+        if (targetPort) edge.targetPort = targetPort;
+
         if (sourceNode !== targetNode) {
-          edges.push({
-            id: `${net.id}-${sourceNode}-${targetNode}`,
-            sources: [sourceNode],
-            targets: [targetNode],
-          });
+          edges.push(edge);
         }
       }
     }
@@ -83,7 +108,7 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
       "elk.edgeRouting": "ORTHOGONAL",
       "elk.layered.nodePlacement.strategy": "SIMPLE",
       "elk.layered.nodePlacement.favorStraightEdges": "true",
-      "elk.portConstraints": "FREE",
+      "elk.portConstraints": "FIXED_SIDE", // important
     },
     children: nodes,
     edges,
@@ -107,11 +132,10 @@ export default function Schematic({ netlist }: SchematicProps) {
       .catch((err) => {
         console.error("ELK layout error:", err);
       });
-  }, [netlist]); // <- add netlist dependency here
+  }, [netlist]);
 
   if (!layout) return <div>Calculating layout...</div>;
 
-  // Defensive: type cast children and edges
   const children = (layout.children || []) as ElkNode[];
   const edges = (layout.edges || []) as ElkExtendedEdge[];
 
@@ -147,28 +171,69 @@ export default function Schematic({ netlist }: SchematicProps) {
         const y = node.y ?? 0;
         const width = node.width ?? 80;
         const height = node.height ?? 50;
-        const labelText = node.labels?.[0]?.text ?? "";
+
+        const isGround = node.id.startsWith("GND@");
 
         return (
           <g key={node.id} transform={`translate(${x},${y})`}>
-            <rect
-              width={width}
-              height={height}
-              fill="#def"
-              stroke="#36c"
-              strokeWidth={2}
-              rx={8}
-              ry={8}
-            />
-            <text
-              x={width / 2}
-              y={height / 2}
-              textAnchor="middle"
-              alignmentBaseline="middle"
-              style={{ userSelect: "none", fontFamily: "monospace", fontSize: 12 }}
-            >
-              {labelText}
-            </text>
+            {isGround ? (
+              // Ground symbol
+              <>
+                <line
+                  x1={width / 2}
+                  y1={0}
+                  x2={width / 2}
+                  y2={10}
+                  stroke="black"
+                />
+                <line
+                  x1={width / 2 - 6}
+                  y1={10}
+                  x2={width / 2 + 6}
+                  y2={10}
+                  stroke="black"
+                />
+                <line
+                  x1={width / 2 - 4}
+                  y1={14}
+                  x2={width / 2 + 4}
+                  y2={14}
+                  stroke="black"
+                />
+                <line
+                  x1={width / 2 - 2}
+                  y1={18}
+                  x2={width / 2 + 2}
+                  y2={18}
+                  stroke="black"
+                />
+              </>
+            ) : (
+              <>
+                <rect
+                  width={width}
+                  height={height}
+                  fill="#def"
+                  stroke="#36c"
+                  strokeWidth={2}
+                  rx={8}
+                  ry={8}
+                />
+                <text
+                  x={width / 2}
+                  y={height / 2}
+                  textAnchor="middle"
+                  alignmentBaseline="middle"
+                  style={{
+                    userSelect: "none",
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                  }}
+                >
+                  {node.labels?.[0]?.text ?? ""}
+                </text>
+              </>
+            )}
           </g>
         );
       })}
