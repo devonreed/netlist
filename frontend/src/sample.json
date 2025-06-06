@@ -1,0 +1,63 @@
+{
+    "components": [
+      {
+        "id": "R1",
+        "type": "resistor",
+        "value": "1k",
+        "pins": {
+          "1": "net1",
+          "2": "net2"
+        }
+      },
+      {
+        "id": "C1",
+        "type": "capacitor",
+        "value": "100n",
+        "pins": {
+          "1": "net2",
+          "2": "net0"
+        }
+      },
+      {
+        "id": "V1",
+        "type": "voltage_source",
+        "value": "DC 5",
+        "pins": {
+          "positive": "net1",
+          "negative": "net0"
+        }
+      },
+      {
+        "id": "GND",
+        "type": "ground",
+        "value": "",
+        "pins": {
+          "0": "net0"
+        }
+      }
+    ],
+    "nets": [
+      {
+        "id": "net0",
+        "nodes": [
+          "V1.negative",
+          "C1.2",
+          "GND.0"
+        ]
+      },
+      {
+        "id": "net1",
+        "nodes": [
+          "V1.positive",
+          "R1.1"
+        ]
+      },
+      {
+        "id": "net2",
+        "nodes": [
+          "R1.2",
+          "C1.2"
+        ]
+      }
+    ]
+  }
