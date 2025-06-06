@@ -10,25 +10,58 @@ interface ElkGraph extends ElkNode {
   children: ElkNode[];
   edges: ElkExtendedEdge[]; // must be extended edge with sources/targets
 }
-
 function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
-  const nodes: ElkNode[] = netlist.components.map((comp) => ({
-    id: comp.id,
-    labels: [{ text: `${comp.id}\n${comp.type}\n${comp.value}` }],
-    width: 80,
-    height: 50,
-  }));
-
+  const nodes: ElkNode[] = [];
   const edges: ElkExtendedEdge[] = [];
 
+  // Add all non-ground components as nodes
+  netlist.components.forEach((comp) => {
+    if (comp.type !== "ground") {
+      nodes.push({
+        id: comp.id,
+        labels: [{ text: `${comp.id}\n${comp.type}\n${comp.value}` }],
+        width: 80,
+        height: 50,
+      });
+    }
+  });
   netlist.nets.forEach((net) => {
     const connectedPins = net.nodes;
+  
     for (let i = 0; i < connectedPins.length; i++) {
       for (let j = i + 1; j < connectedPins.length; j++) {
         const sourcePin = connectedPins[i];
         const targetPin = connectedPins[j];
-        const sourceNode = sourcePin.split(".")[0];
-        const targetNode = targetPin.split(".")[0];
+        const sourceNodeId = sourcePin.split(".")[0];
+        const targetNodeId = targetPin.split(".")[0];
+  
+        const sourceComp = netlist.components.find(c => c.id === sourceNodeId);
+        const targetComp = netlist.components.find(c => c.id === targetNodeId);
+  
+        // For source node, if ground, create unique ground node
+        let sourceNode = sourceNodeId;
+        if (sourceComp?.type === "ground") {
+          sourceNode = `GND@${net.id}-${i}-${Math.random().toString(36).slice(2, 7)}`;
+          nodes.push({
+            id: sourceNode,
+            labels: [{ text: "GND" }],
+            width: 30,
+            height: 30,
+          });
+        }
+  
+        // For target node, if ground, create unique ground node
+        let targetNode = targetNodeId;
+        if (targetComp?.type === "ground") {
+          targetNode = `GND@${net.id}-${j}-${Math.random().toString(36).slice(2, 7)}`;
+          nodes.push({
+            id: targetNode,
+            labels: [{ text: "GND" }],
+            width: 30,
+            height: 30,
+          });
+        }
+  
         if (sourceNode !== targetNode) {
           edges.push({
             id: `${net.id}-${sourceNode}-${targetNode}`,
@@ -48,6 +81,9 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
       "elk.layered.spacing.nodeNodeBetweenLayers": "50",
       "elk.layered.spacing.nodeNode": "50",
       "elk.edgeRouting": "ORTHOGONAL",
+      "elk.layered.nodePlacement.strategy": "SIMPLE",
+      "elk.layered.nodePlacement.favorStraightEdges": "true",
+      "elk.portConstraints": "FREE",
     },
     children: nodes,
     edges,
