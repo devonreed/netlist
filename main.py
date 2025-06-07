@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.responses import RedirectResponse, FileResponse, JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -7,6 +7,15 @@ import os
 import logging
 import json
 from typing import List, Dict
+
+from pymongo import MongoClient
+import os
+
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+client = MongoClient(MONGO_URL)
+db = client["quilter"]
+collection = db["netlists"]
+
 
 app = FastAPI()
 
@@ -32,13 +41,8 @@ UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-def validate_netlist_json(json_str: str) -> List[str]:
+def validate_netlist_json(data: object) -> List[str]:
     errors: List[str] = []
-
-    try:
-        data = json.loads(json_str)
-    except json.JSONDecodeError as e:
-        return [f"Invalid JSON: {e}"]
 
     if not isinstance(data, dict):
         errors.append("Top-level JSON must be an object")
@@ -112,8 +116,13 @@ def validate_netlist_json(json_str: str) -> List[str]:
 async def upload_file(file: UploadFile = File(...)):
     contents = await file.read()
     file_str = contents.decode("utf-8")
+
+    try:
+        data = json.loads(file_str)
+    except json.JSONDecodeError as e:
+        return [f"Invalid JSON: {e}"]
     
-    errors: List = validate_netlist_json(file_str)
+    errors: List = validate_netlist_json(data)
 
     message: str = "Upload successful" if len(errors) == 0 else "Upload failed"
 
@@ -123,6 +132,48 @@ async def upload_file(file: UploadFile = File(...)):
         "content": file_str,
         "errors": errors
     })
+from fastapi import Request, Form
+from fastapi.responses import JSONResponse
+from pymongo import MongoClient
+
+@app.post("/save")
+async def save_file(request: Request):
+    data = await request.json()
+
+    if "email" not in data or "netlist" not in data:
+        return JSONResponse({"error": "Missing 'email' or 'netlist'"}, status_code=400)
+    
+
+    errors: List[str] = validate_netlist_json(data["netlist"])
+
+    if len(errors) > 0:
+        return JSONResponse(
+            status_code=400,
+            content={"success": False}
+        )
+
+    json_data = {
+        "email": data["email"],
+        "netlist": data["netlist"],
+    }
+
+    collection.insert_one(json_data)
+
+    return JSONResponse(content={"success": False})
+
+# Helper to convert MongoDB ObjectId to string
+def convert_objectid(document):
+    if "_id" in document:
+        document["_id"] = str(document["_id"])
+    return document
+
+@app.get("/list")
+async def get_netlists(email: str):
+    """
+    Returns all netlists for a given user email.
+    """
+    netlists = list(collection.find({"email": email}, {"_id": 0}))
+    return {"netlists": netlists}
 
 # Fallback: Serve index.html for all other routes (SPA support)
 @app.get("/{full_path:path}", response_class=HTMLResponse)

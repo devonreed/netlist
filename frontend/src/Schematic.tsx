@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import ELK from "elkjs/lib/elk.bundled.js";
-import type { Netlist } from "./Netlist.tsx";
+import type { Netlist } from "./Netlist";
 import type { ElkNode, ElkExtendedEdge } from "elkjs";
 
 const elk = new ELK();
 
-// Types for the graph we feed ELK
 interface ElkGraph extends ElkNode {
   children: ElkNode[];
-  edges: ElkExtendedEdge[]; // must be extended edge with sources/targets
+  edges: ElkExtendedEdge[];
 }
 
 function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
@@ -19,7 +18,11 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
     if (comp.type !== "ground") {
       nodes.push({
         id: comp.id,
-        labels: [{ text: `${comp.id}\n${comp.type}\n${comp.value}` }],
+        labels: [
+          { text: comp.id },
+          { text: comp.value || "" },
+          { text: comp.type || "" }
+        ],
         width: 80,
         height: 50,
       });
@@ -60,6 +63,9 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
                 },
               },
             ],
+            layoutOptions: {
+              "elk.portConstraints": "FIXED_SIDE"
+            }
           });
         }
 
@@ -79,6 +85,9 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
                 },
               },
             ],
+            layoutOptions: {
+              "elk.portConstraints": "FIXED_SIDE"
+            }
           });
         }
 
@@ -108,7 +117,7 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
       "elk.edgeRouting": "ORTHOGONAL",
       "elk.layered.nodePlacement.strategy": "SIMPLE",
       "elk.layered.nodePlacement.favorStraightEdges": "true",
-      "elk.portConstraints": "FIXED_SIDE", // important
+      "elk.portConstraints": "FIXED_SIDE",
     },
     children: nodes,
     edges,
@@ -140,103 +149,137 @@ export default function Schematic({ netlist }: SchematicProps) {
   const edges = (layout.edges || []) as ElkExtendedEdge[];
 
   return (
-    <svg
-      width={(layout.width ?? 0) + 50}
-      height={(layout.height ?? 0) + 50}
-      style={{ border: "1px solid #ccc" }}
-    >
-      {/* Edges */}
-      {edges.map((edge) => {
-        if (!edge.sections || edge.sections.length === 0) return null;
-        const section = edge.sections[0];
-        const points = [
-          section.startPoint,
-          ...(section.bendPoints || []),
-          section.endPoint,
-        ];
-        return (
-          <polyline
-            key={edge.id}
-            fill="none"
-            stroke="#333"
-            strokeWidth={2}
-            points={points.map((p) => `${p.x},${p.y}`).join(" ")}
-          />
-        );
-      })}
+    <div className="w-full h-full flex items-center justify-center overflow-auto">
+      <svg
+        width={(layout.width ?? 0) + 50}
+        height={(layout.height ?? 0) + 50}
+        style={{ border: "1px solid #ccc" }}
+      >
+        {/* Edges */}
+        {edges.map((edge) => {
+          if (!edge.sections || edge.sections.length === 0) return null;
+          const section = edge.sections[0];
+          const points = [
+            section.startPoint,
+            ...(section.bendPoints || []),
+            section.endPoint,
+          ];
+          return (
+            <polyline
+              key={edge.id}
+              fill="none"
+              stroke="#333"
+              strokeWidth={2}
+              points={points.map((p) => `${p.x},${p.y}`).join(" ")}
+            />
+          );
+        })}
 
-      {/* Nodes */}
-      {children.map((node) => {
-        const x = node.x ?? 0;
-        const y = node.y ?? 0;
-        const width = node.width ?? 80;
-        const height = node.height ?? 50;
+        {/* Nodes */}
+        {children.map((node) => {
+          const x = node.x ?? 0;
+          const y = node.y ?? 0;
+          const width = node.width ?? 80;
+          const height = node.height ?? 50;
+          const isGround = node.id.startsWith("GND@");
 
-        const isGround = node.id.startsWith("GND@");
+          const labelMain = node.labels?.[0]?.text ?? "";
+          const labelValue = node.labels?.[1]?.text ?? "";
 
-        return (
-          <g key={node.id} transform={`translate(${x},${y})`}>
-            {isGround ? (
-              // Ground symbol
-              <>
-                <line
-                  x1={width / 2}
-                  y1={0}
-                  x2={width / 2}
-                  y2={10}
-                  stroke="black"
-                />
-                <line
-                  x1={width / 2 - 6}
-                  y1={10}
-                  x2={width / 2 + 6}
-                  y2={10}
-                  stroke="black"
-                />
-                <line
-                  x1={width / 2 - 4}
-                  y1={14}
-                  x2={width / 2 + 4}
-                  y2={14}
-                  stroke="black"
-                />
-                <line
-                  x1={width / 2 - 2}
-                  y1={18}
-                  x2={width / 2 + 2}
-                  y2={18}
-                  stroke="black"
-                />
-              </>
-            ) : (
-              <>
-                <rect
-                  width={width}
-                  height={height}
-                  fill="#def"
-                  stroke="#36c"
-                  strokeWidth={2}
-                  rx={8}
-                  ry={8}
-                />
-                <text
-                  x={width / 2}
-                  y={height / 2}
-                  textAnchor="middle"
-                  alignmentBaseline="middle"
-                  style={{
-                    userSelect: "none",
-                    fontFamily: "monospace",
-                    fontSize: 12,
-                  }}
-                >
-                  {node.labels?.[0]?.text ?? ""}
-                </text>
-              </>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+          return (
+            <g key={node.id} transform={`translate(${x},${y})`}>
+              {isGround ? (
+                <>
+                  <line x1={width / 2} y1={0} x2={width / 2} y2={10} stroke="black" />
+                  <line x1={width / 2 - 6} y1={10} x2={width / 2 + 6} y2={10} stroke="black" />
+                  <line x1={width / 2 - 4} y1={14} x2={width / 2 + 4} y2={14} stroke="black" />
+                  <line x1={width / 2 - 2} y1={18} x2={width / 2 + 2} y2={18} stroke="black" />
+                </>
+              ) : (
+                <>
+                  <rect
+                    width={width}
+                    height={height}
+                    fill="#def"
+                    stroke="#36c"
+                    strokeWidth={2}
+                    rx={8}
+                    ry={8}
+                  />
+
+                  {/* Component Symbol */}
+                  {(() => {
+                    const centerX = width / 2;
+                    const centerY = height / 2 + 4;
+                    switch (node.labels?.[2].text) {
+                      case "resistor":
+                        return (
+                          <path
+                            d={`M ${centerX - 20},${centerY}
+                                l 4,-6 l 4,12 l 4,-12 l 4,12 l 4,-12 l 4,12 l 4,-6`}
+                            stroke="#000"
+                            fill="none"
+                            strokeWidth={1.5}
+                          />
+                        );
+                      case "capacitor":
+                        return (
+                          <>
+                            <line x1={centerX - 8} y1={centerY - 8} x2={centerX - 8} y2={centerY + 8} stroke="#000" strokeWidth={1.5} />
+                            <line x1={centerX + 8} y1={centerY - 8} x2={centerX + 8} y2={centerY + 8} stroke="#000" strokeWidth={1.5} />
+                            <line x1={centerX - 16} y1={centerY} x2={centerX - 8} y2={centerY} stroke="#000" strokeWidth={1.5} />
+                            <line x1={centerX + 8} y1={centerY} x2={centerX + 16} y2={centerY} stroke="#000" strokeWidth={1.5} />
+                          </>
+                        );
+                      case "voltage":
+                        return (
+                          <>
+                            <circle cx={centerX} cy={centerY} r={10} stroke="#000" fill="none" strokeWidth={1.5} />
+                            <line x1={centerX} y1={centerY - 6} x2={centerX} y2={centerY + 6} stroke="#000" strokeWidth={1.5} />
+                            <line x1={centerX - 4} y1={centerY} x2={centerX + 4} y2={centerY} stroke="#000" strokeWidth={1.5} />
+                          </>
+                        );
+                      default:
+                        return null;
+                    }
+                  })()}
+
+                  {/* ID label */}
+                  <text
+                    x={width / 2}
+                    y={14}
+                    textAnchor="middle"
+                    alignmentBaseline="middle"
+                    style={{
+                      userSelect: "none",
+                      fontFamily: "monospace",
+                      fontSize: 12,
+                    }}
+                  >
+                    {labelMain}
+                  </text>
+                  {labelValue && (
+                    <text
+                      x={width / 2}
+                      y={height + 4}
+                      textAnchor="middle"
+                      alignmentBaseline="hanging"
+                      style={{
+                        userSelect: "none",
+                        fontFamily: "monospace",
+                        fontSize: 12,
+                        fill: "#444",
+                      }}
+                    >
+                      {labelValue}
+                    </text>
+                  )}
+                </>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
