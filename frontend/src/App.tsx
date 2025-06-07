@@ -8,16 +8,27 @@ import FileUploadButton from './FileUploadButton.tsx';
 export default function Netlist() {
   const [email, setEmail] = useState<string>('');
   const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
+  const [emailError, setEmailError] = useState(false);
   const [netlist, setNetlist] = useState<Netlist | null>(null);
+  const [filename, setFilename] = useState<string>('');
   const [errors, setErrors] = useState<Array<string>>([]);
 
   useEffect(() => {
     console.log("Draw/Redraw");
-  }, [netlist, errors]);
+  }, [netlist, errors, email]);
 
-  const handleUploadComplete = (jsonString: string) => {
+  const handleLoad = (filename: string, content: string, errors: Array<string>) => {
+    if (errors.length == 0) {
+      handleUploadComplete(filename, content);
+    } else {
+      handleErrors(errors)
+    }
+  }
+
+  const handleUploadComplete = (file: string, jsonString: string) => {
     try {
       const jsonObj = JSON.parse(jsonString);
+      setFilename(file);
       setNetlist(jsonObj as Netlist);
     } catch (e) {
       console.error(e);
@@ -28,38 +39,25 @@ export default function Netlist() {
     setErrors(errors);
   }
 
-  const handleSave = async () => {
-    if (!netlist || !email) {
-      alert("Missing email or netlist.");
-      return;
-    }
-  
-    try {
-      const response = await fetch("http://localhost:8000/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email,
-          netlist: netlist,
-        }),
-      });
-  
-      if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}`);
-      }
-  
-      alert("Netlist saved successfully!");
-    } catch (error) {
-      console.error("Save error:", error);
-      alert("Failed to save netlist.");
-    }
+  const handleClose = async () => {
+    setFilename('');
+    setNetlist(null);
+    setErrors([]);
+  };
+
+  const handleLogout = async () => {
+    setEmail('');
+    setEmailSubmitted(false);
   };
 
   const handleEmailSubmit = () => {
-    if (email.trim()) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+    if (emailRegex.test(email.trim())) {
       setEmailSubmitted(true);
+      setEmailError(false);
+    } else {
+      setEmailError(true);
     }
   };
 
@@ -70,9 +68,11 @@ export default function Netlist() {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => { setEmail(e.target.value); setEmailError(false); }}
+            className={`px-3 py-2 border rounded-md shadow-sm focus:outline-none ${
+              emailError ? "border-red-500" : "border-gray-300"
+            }`}
           />
           <button
             onClick={handleEmailSubmit}
@@ -83,20 +83,35 @@ export default function Netlist() {
         </div>
       ) : (
         <>
-          <UserNetlists email={email} />
-          <FileUploadButton onUploadComplete={handleUploadComplete} onErrors={handleErrors} />
+          {!netlist && errors.length == 0 && <UserNetlists email={email} onLoad={handleLoad} />}
+          {!netlist && errors.length == 0 && <FileUploadButton email={email} onUploadComplete={handleUploadComplete} onErrors={handleErrors} />}
+
+          {!netlist && errors.length == 0 && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleLogout}
+                className="inline-block cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Logout
+              </button>
+            </div>
+          )}
+
+          {(netlist || errors.length > 0) && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleClose}
+                className="inline-block cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Close
+              </button>
+            </div>
+          )}
 
           {netlist && (
             <div className="w-full max-w-5xl">
+              <h2 className="text-center text-lg font-semibold mb-2">{filename}</h2>
               <Schematic netlist={netlist} />
-              <div className="flex justify-center mt-4">
-                <button
-                  onClick={handleSave}
-                  className="inline-block cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  Save
-                </button>
-              </div>
             </div>
           )}
 
@@ -110,6 +125,8 @@ export default function Netlist() {
               </ul>
             </div>
           )}
+
+          
         </>
       )}
     </div>

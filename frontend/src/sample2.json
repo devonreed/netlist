@@ -1,68 +1,28 @@
 {
     "components": [
-      {
-        "id": "R1",
-        "type": "resistor",
-        "value": "1k",
-        "pins": {
-          "1": "net1",
-          "2": "net0"
-        }
-      },
-      {
-        "id": "C1",
-        "type": "capacitor",
-        "value": "100n",
-        "pins": {
-          "1": "net2",
-          "2": "net0"
-        }
-      },
-      {
-        "id": "V1",
-        "type": "voltage_source",
-        "value": "DC 5",
-        "pins": {
-          "positive": "net3",
-          "negative": "net0"
-        }
-      },
-      {
-        "id": "GND",
-        "type": "ground",
-        "value": "",
-        "pins": {
-          "0": "net0"
-        }
-      }
+      { "id": "R1", "type": "resistor", "value": "1k", "pins": { "1": "net1", "2": "net2" } },
+      { "id": "R2", "type": "resistor", "value": "4.7k", "pins": { "1": "net2", "2": "net3" } },
+      { "id": "C1", "type": "capacitor", "value": "100n", "pins": { "1": "net3", "2": "net0" } },
+      { "id": "C2", "type": "capacitor", "value": "10u", "pins": { "1": "net4", "2": "net0" } },
+      { "id": "D1", "type": "diode", "value": "1N4148", "pins": { "anode": "net5", "cathode": "net4" } },
+      { "id": "D2", "type": "diode", "value": "1N4007", "pins": { "anode": "net6", "cathode": "net5" } },
+      { "id": "V1", "type": "voltage", "value": "DC 5", "pins": { "positive": "net1", "negative": "net0" } },
+      { "id": "V2", "type": "voltage", "value": "DC 12", "pins": { "positive": "net6", "negative": "net0" } },
+      { "id": "IC1", "type": "integrated_circuit", "value": "555", "pins": { "1": "net0", "2": "net2", "3": "net7" } },
+      { "id": "IC2", "type": "integrated_circuit", "value": "LM358", "pins": { "1": "net7", "2": "net8", "3": "net4" } },
+      { "id": "R3", "type": "resistor", "value": "10k", "pins": { "1": "net8", "2": "net9" } },
+      { "id": "GND", "type": "ground", "value": "", "pins": { "0": "net0" } }
     ],
     "nets": [
-      {
-        "id": "net0",
-        "nodes": [
-          "R1.2",
-          "C1.2",
-          "V1.negative",
-          "GND.0"
-        ]
-      },
-      {
-        "id": "net1",
-        "nodes": [
-          "R1.1"
-        ]
-      },
-      {
-        "id": "net2",
-        "nodes": [
-          "C1.1"
-        ]
-      },
-      {
-        "id": "net3",
-        "nodes": [
-          "V1.positive"
-        ]
-      }
+      { "id": "net0", "nodes": ["V1.negative", "V2.negative", "C1.2", "C2.2", "IC1.1", "GND.0"] },
+      { "id": "net1", "nodes": ["V1.positive", "R1.1"] },
+      { "id": "net2", "nodes": ["R1.2", "R2.1", "IC1.2"] },
+      { "id": "net3", "nodes": ["R2.2", "C1.1"] },
+      { "id": "net4", "nodes": ["C2.1", "D1.cathode", "IC2.3"] },
+      { "id": "net5", "nodes": ["D1.anode", "D2.cathode"] },
+      { "id": "net6", "nodes": ["D2.anode", "V2.positive"] },
+      { "id": "net7", "nodes": ["IC1.3", "IC2.1"] },
+      { "id": "net8", "nodes": ["IC2.2", "R3.1"] },
+      { "id": "net9", "nodes": ["R3.2"] }
     ]
   }

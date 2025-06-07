@@ -1,0 +1,164 @@
+{
+    "components": [
+      {
+        "id": "R1",
+        "type": "resistor",
+        "value": "1k",
+        "pins": {
+          "1": "net1",
+          "2": "net2"
+        }
+      },
+      {
+        "id": "C1",
+        "type": "capacitor",
+        "value": "100n",
+        "pins": {
+          "1": "net2",
+          "2": "net_gnd"
+        }
+      },
+      {
+        "id": "D1",
+        "type": "diode",
+        "value": "1N4148",
+        "pins": {
+          "anode": "net3",
+          "cathode": "net4"
+        }
+      },
+      {
+        "id": "D2",
+        "type": "diode",
+        "value": "1N4148",
+        "pins": {
+          "anode": "net4",
+          "cathode": "net_gnd"
+        }
+      },
+      {
+        "id": "V1",
+        "type": "voltage",
+        "value": "DC 5",
+        "pins": {
+          "positive": "net1",
+          "negative": "net_gnd"
+        }
+      },
+      {
+        "id": "R2",
+        "type": "resistor",
+        "value": "10k",
+        "pins": {
+          "1": "net4",
+          "2": "net5"
+        }
+      },
+      {
+        "id": "C2",
+        "type": "capacitor",
+        "value": "1u",
+        "pins": {
+          "1": "net5",
+          "2": "net6"
+        }
+      },
+      {
+        "id": "U1",
+        "type": "integrated_circuit",
+        "value": "IC1",
+        "pins": {
+          "1": "net2",
+          "2": "net3",
+          "3": "net7"
+        }
+      },
+      {
+        "id": "U2",
+        "type": "integrated_circuit",
+        "value": "IC2",
+        "pins": {
+          "1": "net5",
+          "2": "net8",
+          "3": "net9"
+        }
+      },
+      {
+        "id": "R3",
+        "type": "resistor",
+        "value": "4.7k",
+        "pins": {
+          "1": "net9",
+          "2": "net10"
+        }
+      },
+      {
+        "id": "C3",
+        "type": "capacitor",
+        "value": "10n",
+        "pins": {
+          "1": "net10",
+          "2": "net7"
+        }
+      },
+      {
+        "id": "GND",
+        "type": "ground",
+        "value": "",
+        "pins": {
+          "0": "net_gnd"
+        }
+      }
+    ],
+    "nets": [
+      {
+        "id": "net1",
+        "nodes": ["V1.positive", "R1.1"]
+      },
+      {
+        "id": "net2",
+        "nodes": ["R1.2", "C1.1", "U1.1"]
+      },
+      {
+        "id": "net3",
+        "nodes": ["D1.anode", "U1.2"]
+      },
+      {
+        "id": "net4",
+        "nodes": ["D1.cathode", "D2.anode", "R2.1"]
+      },
+      {
+        "id": "net5",
+        "nodes": ["R2.2", "C2.1", "U2.1"]
+      },
+      {
+        "id": "net6",
+        "nodes": ["C2.2"]
+      },
+      {
+        "id": "net7",
+        "nodes": ["U1.3", "C3.2"]
+      },
+      {
+        "id": "net8",
+        "nodes": ["U2.2"]
+      },
+      {
+        "id": "net9",
+        "nodes": ["U2.3", "R3.1"]
+      },
+      {
+        "id": "net10",
+        "nodes": ["R3.2", "C3.1"]
+      },
+      {
+        "id": "net_gnd",
+        "nodes": [
+          "V1.negative",
+          "C1.2",
+          "D2.cathode",
+          "GND.0"
+        ]
+      }
+    ]
+  }

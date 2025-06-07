@@ -9,9 +9,9 @@
           "2": "net2"
         }
       },
+      "this should be an object",
       {
         "id": "C1",
-        "type": "capacitor",
         "value": "100n",
         "pins": {
           "1": "net2",
@@ -22,10 +22,7 @@
         "id": "V1",
         "type": "voltage",
         "value": "DC 5",
-        "pins": {
-          "positive": "net1",
-          "negative": "net0"
-        }
+        "pins": "not a dict"
       },
       {
         "id": "GND",
@@ -56,8 +53,30 @@
         "id": "net2",
         "nodes": [
           "R1.2",
-          "C3.2"
+          "C1.X"
         ]
-      }
+      },
+      {
+        "id": "net3",
+        "nodes": [
+          "UnknownComponent.1"
+        ]
+      },
+      {
+        "id": "net4",
+        "nodes": [
+          "malformedNode"
+        ]
+      },
+      {
+        "id": "net5",
+        "nodes": "should be a list"
+      },
+      {
+        "nodes": [
+          "R1.1"
+        ]
+      },
+      "not an object"
     ]
-  }
+}

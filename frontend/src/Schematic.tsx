@@ -16,6 +16,15 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
 
   netlist.components.forEach((comp) => {
     if (comp.type !== "ground") {
+      const portEntries = Object.entries(comp.pins ?? {});
+      const ports = portEntries.map(([pinName], index) => ({
+        id: `${comp.id}.${pinName}`,
+        properties: {
+          "port.side": index % 2 === 0 ? "WEST" : "EAST",
+          "port.alignment": "CENTER",
+        },
+      }));
+
       nodes.push({
         id: comp.id,
         labels: [
@@ -25,6 +34,10 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
         ],
         width: 80,
         height: 50,
+        ports,
+        layoutOptions: {
+          "elk.portConstraints": "FIXED_SIDE"
+        }
       });
     }
   });
@@ -34,20 +47,19 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
 
     for (let i = 0; i < connectedPins.length; i++) {
       for (let j = i + 1; j < connectedPins.length; j++) {
-        const sourcePin = connectedPins[i];
-        const targetPin = connectedPins[j];
-        const sourceNodeId = sourcePin.split(".")[0];
-        const targetNodeId = targetPin.split(".")[0];
+        const [srcId, srcPin] = connectedPins[i].split(".");
+        const [tgtId, tgtPin] = connectedPins[j].split(".");
 
-        const sourceComp = netlist.components.find(c => c.id === sourceNodeId);
-        const targetComp = netlist.components.find(c => c.id === targetNodeId);
+        const srcComp = netlist.components.find(c => c.id === srcId);
+        const tgtComp = netlist.components.find(c => c.id === tgtId);
 
-        let sourceNode = sourceNodeId;
-        let targetNode = targetNodeId;
+        let sourceNode = srcId;
+        let targetNode = tgtId;
+        let sourcePort = `${srcId}.${srcPin}`;
+        let targetPort = `${tgtId}.${tgtPin}`;
 
-        let sourcePort, targetPort;
-
-        if (sourceComp?.type === "ground") {
+        // Handle ground nodes
+        if (srcComp?.type === "ground") {
           sourceNode = `GND@${net.id}-${i}-${Math.random().toString(36).slice(2, 7)}`;
           sourcePort = `${sourceNode}_top`;
           nodes.push({
@@ -57,7 +69,7 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
             ports: [
               {
                 id: sourcePort,
-                properties: {
+                layoutOptions: {
                   "port.side": "NORTH",
                   "port.alignment": "CENTER",
                 },
@@ -69,7 +81,7 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
           });
         }
 
-        if (targetComp?.type === "ground") {
+        if (tgtComp?.type === "ground") {
           targetNode = `GND@${net.id}-${j}-${Math.random().toString(36).slice(2, 7)}`;
           targetPort = `${targetNode}_top`;
           nodes.push({
@@ -78,8 +90,8 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
             height: 30,
             ports: [
               {
-                id: targetPort,
-                properties: {
+                id: sourcePort,
+                layoutOptions: {
                   "port.side": "NORTH",
                   "port.alignment": "CENTER",
                 },
@@ -91,17 +103,14 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
           });
         }
 
-        const edge: ElkExtendedEdge = {
-          id: `${net.id}-${sourceNode}-${targetNode}`,
-          sources: [sourceNode],
-          targets: [targetNode],
-        };
-
-        if (sourcePort) edge.sourcePort = sourcePort;
-        if (targetPort) edge.targetPort = targetPort;
-
         if (sourceNode !== targetNode) {
-          edges.push(edge);
+          edges.push({
+            id: `${net.id}-${sourceNode}-${targetNode}`,
+            sources: [sourceNode],
+            targets: [targetNode],
+            ...(sourcePort && { sourcePort }),
+            ...(targetPort && { targetPort }),
+          } as ElkExtendedEdge);
         }
       }
     }
@@ -111,11 +120,11 @@ function convertNetlistToELKGraph(netlist: Netlist): ElkGraph {
     id: "root",
     layoutOptions: {
       "elk.algorithm": "layered",
-      "elk.direction": "RIGHT",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "50",
-      "elk.layered.spacing.nodeNode": "50",
+      "elk.direction": "DOWN", // more compact layout
+      "elk.layered.spacing.nodeNodeBetweenLayers": "40",
+      "elk.layered.spacing.nodeNode": "40",
       "elk.edgeRouting": "ORTHOGONAL",
-      "elk.layered.nodePlacement.strategy": "SIMPLE",
+      "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
       "elk.layered.nodePlacement.favorStraightEdges": "true",
       "elk.portConstraints": "FIXED_SIDE",
     },
@@ -210,33 +219,35 @@ export default function Schematic({ netlist }: SchematicProps) {
                   {/* Component Symbol */}
                   {(() => {
                     const centerX = width / 2;
-                    const centerY = height / 2 + 4;
+                    const centerY = height / 2;
                     switch (node.labels?.[2].text) {
                       case "resistor":
                         return (
                           <path
-                            d={`M ${centerX - 20},${centerY}
-                                l 4,-6 l 4,12 l 4,-12 l 4,12 l 4,-12 l 4,12 l 4,-6`}
+                            d={`M ${centerX - 15},${centerY}
+                                l 3,-4.5 l 3,9 l 3,-9 l 3,9 l 3,-9 l 3,9 l 3,-4.5`}
                             stroke="#000"
                             fill="none"
-                            strokeWidth={1.5}
+                            strokeWidth={1.2}
                           />
                         );
+
                       case "capacitor":
                         return (
                           <>
-                            <line x1={centerX - 8} y1={centerY - 8} x2={centerX - 8} y2={centerY + 8} stroke="#000" strokeWidth={1.5} />
-                            <line x1={centerX + 8} y1={centerY - 8} x2={centerX + 8} y2={centerY + 8} stroke="#000" strokeWidth={1.5} />
-                            <line x1={centerX - 16} y1={centerY} x2={centerX - 8} y2={centerY} stroke="#000" strokeWidth={1.5} />
-                            <line x1={centerX + 8} y1={centerY} x2={centerX + 16} y2={centerY} stroke="#000" strokeWidth={1.5} />
+                            <line x1={centerX - 6} y1={centerY - 6} x2={centerX - 6} y2={centerY + 6} stroke="#000" strokeWidth={1.2} />
+                            <line x1={centerX + 6} y1={centerY - 6} x2={centerX + 6} y2={centerY + 6} stroke="#000" strokeWidth={1.2} />
+                            <line x1={centerX - 12} y1={centerY} x2={centerX - 6} y2={centerY} stroke="#000" strokeWidth={1.2} />
+                            <line x1={centerX + 6} y1={centerY} x2={centerX + 12} y2={centerY} stroke="#000" strokeWidth={1.2} />
                           </>
                         );
+
                       case "voltage":
                         return (
                           <>
-                            <circle cx={centerX} cy={centerY} r={10} stroke="#000" fill="none" strokeWidth={1.5} />
-                            <line x1={centerX} y1={centerY - 6} x2={centerX} y2={centerY + 6} stroke="#000" strokeWidth={1.5} />
-                            <line x1={centerX - 4} y1={centerY} x2={centerX + 4} y2={centerY} stroke="#000" strokeWidth={1.5} />
+                            <circle cx={centerX} cy={centerY} r={7.5} stroke="#000" fill="none" strokeWidth={1.2} />
+                            <line x1={centerX} y1={centerY - 4.5} x2={centerX} y2={centerY + 4.5} stroke="#000" strokeWidth={1.2} />
+                            <line x1={centerX - 3} y1={centerY} x2={centerX + 3} y2={centerY} stroke="#000" strokeWidth={1.2} />
                           </>
                         );
                       default:
@@ -247,7 +258,7 @@ export default function Schematic({ netlist }: SchematicProps) {
                   {/* ID label */}
                   <text
                     x={width / 2}
-                    y={14}
+                    y={10}
                     textAnchor="middle"
                     alignmentBaseline="middle"
                     style={{
@@ -261,7 +272,7 @@ export default function Schematic({ netlist }: SchematicProps) {
                   {labelValue && (
                     <text
                       x={width / 2}
-                      y={height + 4}
+                      y={35}
                       textAnchor="middle"
                       alignmentBaseline="hanging"
                       style={{

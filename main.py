@@ -1,21 +1,18 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, UploadFile, File
-from fastapi.responses import RedirectResponse, FileResponse, JSONResponse, HTMLResponse
+from fastapi import FastAPI, Request, UploadFile, File, HTTPException, Query
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pymongo import MongoClient
 import os
 import logging
 import json
 from typing import List, Dict
 
-from pymongo import MongoClient
-import os
-
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 client = MongoClient(MONGO_URL)
 db = client["quilter"]
 collection = db["netlists"]
-
 
 app = FastAPI()
 
@@ -113,18 +110,50 @@ def validate_netlist_json(data: object) -> List[str]:
     return errors
 
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: UploadFile = File(...),
+    email: str = Query(...)
+):
     contents = await file.read()
     file_str = contents.decode("utf-8")
 
     try:
         data = json.loads(file_str)
     except json.JSONDecodeError as e:
-        return [f"Invalid JSON: {e}"]
-    
-    errors: List = validate_netlist_json(data)
+        return JSONResponse(
+            status_code=400,
+            content={
+                "filename": file.filename,
+                "message": "Invalid JSON",
+                "content": file_str,
+                "errors": [f"Invalid JSON: {e}"],
+            }
+        )
 
-    message: str = "Upload successful" if len(errors) == 0 else "Upload failed"
+    # Check for filename collision
+    if collection.find_one({"email": email, "filename": file.filename}):
+        return JSONResponse(
+            status_code=400,
+            content={
+                "filename": file.filename,
+                "message": "Duplicate filename",
+                "errors": [f"A file named '{file.filename}' already exists for this user. Nothing has been saved. Please rename your file or delete the previous version before uploading."],
+            }
+        )
+
+    errors: List[str] = validate_netlist_json(data)
+    valid = len(errors) == 0
+
+    # Save to DB
+    collection.insert_one({
+        "email": email,
+        "filename": file.filename,
+        "netlist": data,
+        "valid": valid,
+        "errors": errors
+    })
+
+    message = "Upload successful" if valid else "Upload failed"
 
     return JSONResponse({
         "filename": file.filename,
@@ -132,34 +161,13 @@ async def upload_file(file: UploadFile = File(...)):
         "content": file_str,
         "errors": errors
     })
-from fastapi import Request, Form
-from fastapi.responses import JSONResponse
-from pymongo import MongoClient
 
-@app.post("/save")
-async def save_file(request: Request):
-    data = await request.json()
-
-    if "email" not in data or "netlist" not in data:
-        return JSONResponse({"error": "Missing 'email' or 'netlist'"}, status_code=400)
-    
-
-    errors: List[str] = validate_netlist_json(data["netlist"])
-
-    if len(errors) > 0:
-        return JSONResponse(
-            status_code=400,
-            content={"success": False}
-        )
-
-    json_data = {
-        "email": data["email"],
-        "netlist": data["netlist"],
-    }
-
-    collection.insert_one(json_data)
-
-    return JSONResponse(content={"success": False})
+@app.delete("/delete_by_filename/{email}/{filename}")
+async def delete_netlist_by_filename(email: str, filename: str):
+    result = collection.delete_one({"email": email, "filename": filename})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Netlist not found for this email and filename")
+    return {"message": "Netlist deleted"}
 
 # Helper to convert MongoDB ObjectId to string
 def convert_objectid(document):
