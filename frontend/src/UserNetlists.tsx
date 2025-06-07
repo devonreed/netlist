@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import type { Netlist } from "./Netlist";
 
 type UserNetlistsProps = {
   email: string;

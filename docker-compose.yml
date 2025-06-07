@@ -22,7 +22,7 @@ services:
     environment:
       - MONGO_URL=mongodb://mongo:27017
     volumes:
-      - .:/app  # <--- this line is key for code watching!
+      - .:/app
 
 volumes:
   mongo-data:
