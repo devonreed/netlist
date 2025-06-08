@@ -199,10 +199,10 @@ export default function Schematic({ netlist }: SchematicProps) {
             <g key={node.id} transform={`translate(${x},${y})`}>
               {isGround ? (
                 <>
-                  <line x1={width / 2} y1={0} x2={width / 2} y2={10} stroke="black" />
-                  <line x1={width / 2 - 6} y1={10} x2={width / 2 + 6} y2={10} stroke="black" />
-                  <line x1={width / 2 - 4} y1={14} x2={width / 2 + 4} y2={14} stroke="black" />
-                  <line x1={width / 2 - 2} y1={18} x2={width / 2 + 2} y2={18} stroke="black" />
+                  <line x1={width / 2 - 5} y1={0} x2={width / 2 - 5} y2={10} stroke="black" strokeWidth={2} />
+                  <line x1={width / 2 - 11} y1={10} x2={width / 2 + 1} y2={10} stroke="black" />
+                  <line x1={width / 2 - 9} y1={14} x2={width / 2 - 1} y2={14} stroke="black" />
+                  <line x1={width / 2 - 7} y1={18} x2={width / 2 - 3} y2={18} stroke="black" />
                 </>
               ) : (
                 <>
