@@ -1,4 +1,13 @@
 import React, { useEffect, useState } from "react";
+import type { Netlist } from "./Netlist";
+
+type NetlistRecord = {
+    _id: string;
+    filename: string;
+    netlist: Netlist;
+    valid: boolean;
+    errors: string[];
+  };
 
 type UserNetlistsProps = {
   email: string;
@@ -6,7 +15,7 @@ type UserNetlistsProps = {
 };
 
 const UserNetlists: React.FC<UserNetlistsProps> = ({ email, onLoad }) => {
-  const [netlists, setNetlists] = useState<any[]>([]);
+  const [netlists, setNetlists] = useState<NetlistRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -25,8 +34,12 @@ const UserNetlists: React.FC<UserNetlistsProps> = ({ email, onLoad }) => {
 
         const data = await response.json();
         setNetlists(data.netlists);
-      } catch (err: any) {
-        setError(err.message || "An error occurred");
+      } catch (err) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("An unknown error occurred");
+        }
       } finally {
         setLoading(false);
       }
@@ -47,8 +60,13 @@ const UserNetlists: React.FC<UserNetlistsProps> = ({ email, onLoad }) => {
       }
 
       setNetlists((prev) => prev.filter((item) => item.filename !== filename));
-    } catch (err: any) {
-      alert(`Failed to delete "${filename}": ${err.message}`);
+    } catch (err) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("An unknown error occurred");
+        }
+        alert(`Failed to delete "${filename}"`);
     }
   };
 
