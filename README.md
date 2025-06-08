@@ -26,7 +26,7 @@ User Home Screen\
 <img width="700" alt="image" src="https://github.com/user-attachments/assets/e3a5973b-2c66-40c5-84a3-49c1815f4a9f" />\
 \
 Valid Netlist Screen\
-<img width="714" alt="image" src="https://github.com/user-attachments/assets/dc40df71-8341-46bd-86b2-a91dd96f770e" />\
+<img width="428" alt="image" src="https://github.com/user-attachments/assets/e18f0c52-4b91-4dbb-8a50-6dd93516605c" />\
 \
 Invalid Netlist Screen\
 <img width="886" alt="image" src="https://github.com/user-attachments/assets/3f1079e2-6d40-4d4d-91b8-9ac194d97f9c" />
