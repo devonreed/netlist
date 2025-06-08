@@ -4,7 +4,7 @@
 
 ```bash
 git clone https://github.com/devonreed/netlist.git
-cd netlist-app
+cd netlist
 docker compose build
 docker compose up
 ```
