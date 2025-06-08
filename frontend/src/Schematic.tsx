@@ -250,6 +250,30 @@ export default function Schematic({ netlist }: SchematicProps) {
                             <line x1={centerX - 3} y1={centerY} x2={centerX + 3} y2={centerY} stroke="#000" strokeWidth={1.2} />
                           </>
                         );
+                        case "diode":
+                          return (
+                            <>
+                              {/* Horizontal lines on both ends */}
+                              <line x1={centerX - 12} y1={centerY} x2={centerX - 4} y2={centerY} stroke="#000" strokeWidth={1.2} />
+                              <line x1={centerX + 4} y1={centerY} x2={centerX + 12} y2={centerY} stroke="#000" strokeWidth={1.2} />
+                        
+                              {/* Triangle pointing right */}
+                              <path
+                                d={`
+                                  M ${centerX - 4},${centerY - 6}
+                                  L ${centerX + 0},${centerY}
+                                  L ${centerX - 4},${centerY + 6}
+                                  Z
+                                `}
+                                stroke="#000"
+                                fill="none"
+                                strokeWidth={1.2}
+                              />
+                        
+                              {/* Vertical bar for cathode */}
+                              <line x1={centerX} y1={centerY - 6} x2={centerX} y2={centerY + 6} stroke="#000" strokeWidth={1.2} />
+                            </>
+                          );
                       default:
                         return null;
                     }
